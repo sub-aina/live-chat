@@ -2,13 +2,27 @@ const { WebSocketServer } = require("ws")
 const http = require("http")
 const uuidv4 = require("uuid").v4
 const url = require("url")
+const fetch = require("node-fetch");
 
 const server = http.createServer()
 const wsServer = new WebSocketServer({ server })
 
-const port = 8000
+const port = 8001
 const connections = {}
 const users = {}
+
+async function summarizeMessages(messagesArray) {
+    const res = await fetch("http://localhost:8000/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messagesArray }),
+    });
+
+    const data = await res.json();
+    return data.summary;
+}
+
+const chatLog = [];
 
 const handleMessage = (bytes, uuid) => {
     const message = JSON.parse(bytes.toString())
@@ -20,7 +34,7 @@ const handleMessage = (bytes, uuid) => {
             text: message.text,
             timestamp: Date.now(),
         })
-
+        chatLog.push(chatMessage.text);
         Object.values(connections).forEach((connection) => {
             connection.send(chatMessage);
         });
@@ -50,6 +64,23 @@ const handleMessage = (bytes, uuid) => {
         } else {
             console.log(`User ${toUser} not found for private message`);
         }
+    }
+    else if (message.text === "/summarize") {
+        const recentMessages = chatLog.slice(-20);
+        summarizeMessages(recentMessages).then((summary) => {
+            const summaryMessage = JSON.stringify({
+                type: "summary",
+                text: summary,
+                timestamp: Date.now(),
+            });
+
+
+            connections[uuid].send(summaryMessage);
+            console.log(summaryMessage);
+            console.log(`Sent chat summary to ${users[uuid].username}`);
+        }).catch((err) => {
+            console.error("Summarization error:", err);
+        });
     }
 };
 

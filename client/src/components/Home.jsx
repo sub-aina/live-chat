@@ -1,9 +1,9 @@
 import useWebSocket from "react-use-websocket";
 import React, { useEffect, useRef, useState } from "react";
-import { color } from "d3";
+import "./style.css";
 
 export function Home({ username }) {
-	const WS_URL = `ws://127.0.0.1:8000`;
+	const WS_URL = `ws://127.0.0.1:8001`;
 	const { sendJsonMessage, lastJsonMessage } = useWebSocket(WS_URL, {
 		share: true,
 		queryParams: { username },
@@ -14,6 +14,9 @@ export function Home({ username }) {
 	const [chatMessages, setChatMessages] = useState([]);
 	const [privMessage, setPrivMessage] = useState([]);
 	const [selectedUser, setSelectedUser] = useState(null);
+	const [showSummaryModal, setShowSummaryModal] = useState(false);
+	const [summaryContent, setSummaryContent] = useState("");
+	const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 	const chatEndRef = useRef(null);
 
 	useEffect(() => {
@@ -30,7 +33,44 @@ export function Home({ username }) {
 
 	useEffect(() => {
 		chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [chatMessages]);
+	}, [chatMessages, privMessage]);
+
+	const handleSummarize = async () => {
+		console.log(" Summarize button clicked");
+		setIsLoadingSummary(true);
+
+		const messagesToSummarize = selectedUser
+			? privMessage
+					.filter(
+						(msg) =>
+							(msg.from === username && msg.to === selectedUser) ||
+							(msg.from === selectedUser && msg.to === username)
+					)
+					.map((msg) => msg.text)
+			: chatMessages.map((msg) => msg.text);
+
+		try {
+			const res = await fetch("http://127.0.0.1:8000/summarize", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ messages: messagesToSummarize }),
+			});
+
+			const data = await res.json();
+			setSummaryContent(data.summary);
+			setShowSummaryModal(true);
+		} catch (error) {
+			console.error("Summarization error:", error);
+			setSummaryContent(
+				"Something went wrong while summarizing the conversation. Please try again."
+			);
+			setShowSummaryModal(true);
+		} finally {
+			setIsLoadingSummary(false);
+		}
+	};
 
 	const sendChatMessage = (e) => {
 		e.preventDefault();
@@ -66,163 +106,143 @@ export function Home({ username }) {
 		setChatInput("");
 	};
 
+	const formatTime = (timestamp) => {
+		return new Date(timestamp).toLocaleTimeString([], {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+	};
+
+	const currentMessages = selectedUser
+		? privMessage.filter(
+				(msg) =>
+					(msg.from === username && msg.to === selectedUser) ||
+					(msg.from === selectedUser && msg.to === username)
+		  )
+		: chatMessages;
+
+	const activeUserCount = Object.keys(users).length;
+
 	return (
-		<div style={styles.container}>
-			<div style={styles.sidebar}>
-				<h2 style={styles.sidebarTitle}>🟢 Active Users</h2>
-				<ul style={styles.userList}>
+		<div className="chat-container">
+			<div className="chat-sidebar">
+				<div className="sidebar-title">🟢 Active Users</div>
+				<div className="sidebar-subtitle">
+					{activeUserCount} user{activeUserCount !== 1 ? "s" : ""} online
+				</div>
+
+				<ul className="user-list">
+					<li
+						className={`user-item ${!selectedUser ? "selected" : ""}`}
+						onClick={() => setSelectedUser(null)}
+					>
+						💬 Public Chat
+					</li>
 					{Object.values(users).map((user, index) => (
 						<li
 							key={index}
-							style={{
-								...styles.userItem,
-								cursor: "pointer",
-								fontWeight: selectedUser === user.username ? "bold" : "normal",
-							}}
+							className={`user-item ${
+								selectedUser === user.username ? "selected" : ""
+							} ${user.username === username ? "current-user" : ""}`}
 							onClick={() => setSelectedUser(user.username)}
 						>
-							{user.username} {user.username === username ? "(you)" : ""}
+							{user.username === username ? "👤" : "💭"} {user.username}
+							{user.username === username ? " (you)" : ""}
 						</li>
 					))}
 				</ul>
 			</div>
 
-			<div style={styles.chatSection}>
-				<header style={styles.chatHeader}>
-					<h1 style={{ margin: 0 }}>💬 yapp</h1>
+			<div className="chat-section">
+				<header className="chat-header">
+					<h1>Talky</h1>
+					<div className="chat-status">
+						<div className="status-indicator"></div>
+						{selectedUser
+							? `Private chat with ${selectedUser}`
+							: "Public chat room"}
+					</div>
 				</header>
 
-				<div style={styles.messagesArea}>
-					<h3 style={{ marginBottom: 10 }}>
-						{selectedUser ? `Private chat with ${selectedUser}` : "Public chat"}
-					</h3>
-
-					{(selectedUser
-						? privMessage.filter(
-								(msg) =>
-									(msg.from === username && msg.to === selectedUser) ||
-									(msg.from === selectedUser && msg.to === username)
-						  )
-						: chatMessages
-					).map((msg, index) => (
-						<div key={index} style={styles.messageBubble}>
-							<strong>{msg.from || msg.username}</strong>: {msg.text}
+				<div className="messages-area">
+					<div className="chat-mode-header">
+						<div className="chat-mode-title">
+							{selectedUser ? ` Private Chat` : " Public Chat"}
 						</div>
-					))}
+						<div className="chat-mode-subtitle">
+							{selectedUser
+								? `Chatting privately with ${selectedUser}`
+								: `${activeUserCount} user${
+										activeUserCount !== 1 ? "s" : ""
+								  } in the room`}
+						</div>
+					</div>
+
+					{currentMessages.map((msg, index) => {
+						const isOwnMessage = (msg.from || msg.username) === username;
+						return (
+							<div
+								key={index}
+								className={`message-bubble ${
+									isOwnMessage ? "own-message" : ""
+								}`}
+							>
+								<div className="message-author">{msg.from || msg.username}</div>
+								<div className="message-text">{msg.text}</div>
+								<div className="message-time">{formatTime(msg.timestamp)}</div>
+							</div>
+						);
+					})}
+
+					{currentMessages.length > 0 && (
+						<button
+							onClick={handleSummarize}
+							className="summarize-button"
+							disabled={isLoadingSummary}
+						>
+							{isLoadingSummary ? <> Analyzing...</> : <> Summarize Chat</>}
+						</button>
+					)}
 
 					<div ref={chatEndRef} />
 				</div>
 
-				<form onSubmit={sendChatMessage} style={styles.inputForm}>
+				<form onSubmit={sendChatMessage} className="input-form">
 					<input
 						type="text"
 						value={chatInput}
 						onChange={(e) => setChatInput(e.target.value)}
-						placeholder="Type a message..."
-						style={styles.input}
+						placeholder={
+							selectedUser ? `Message ${selectedUser}...` : "Type a message..."
+						}
+						className="input-field"
 					/>
-					<button type="submit" style={styles.sendButton}>
+					<button type="submit" className="send-button">
 						Send
 					</button>
 				</form>
 			</div>
+
+			{/* Summary Modal */}
+			{showSummaryModal && (
+				<div
+					className="summary-modal-overlay"
+					onClick={() => setShowSummaryModal(false)}
+				>
+					<div className="summary-modal" onClick={(e) => e.stopPropagation()}>
+						<div className="summary-header">
+							<div className="summary-title"> Chat Summary</div>
+							<button
+								className="summary-close"
+								onClick={() => setShowSummaryModal(false)}
+							>
+								×
+							</button>
+						</div>
+						<div className="summary-content">{summaryContent}</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
-
-const styles = {
-	container: {
-		display: "flex",
-		height: "100vh",
-		width: "100vw",
-		fontFamily: "sans-serif",
-		background: "#f9fafb",
-		color: "#111827",
-	},
-
-	sidebar: {
-		width: "250px",
-		background: "#111827",
-		color: "#fff",
-		padding: "20px",
-		display: "flex",
-		flexDirection: "column",
-		gap: "10px",
-		overflowY: "auto",
-	},
-
-	sidebarTitle: {
-		marginBottom: "10px",
-		fontSize: "18px",
-	},
-
-	userList: {
-		listStyle: "none",
-		padding: 0,
-		margin: 0,
-	},
-
-	userItem: {
-		marginBottom: "8px",
-		color: "#d1d5db",
-	},
-
-	chatSection: {
-		flex: 1,
-		display: "flex",
-		flexDirection: "column",
-		color: "#111827",
-	},
-
-	chatHeader: {
-		background: "#1f2937",
-		color: "white",
-		padding: "16px",
-		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-	},
-
-	messagesArea: {
-		flex: 1,
-		padding: "20px",
-		overflowY: "auto",
-		display: "flex",
-		flexDirection: "column",
-		gap: "10px",
-		color: "#111827",
-	},
-
-	messageBubble: {
-		background: "#e5e7eb",
-		padding: "10px 14px",
-		borderRadius: "8px",
-		maxWidth: "70%",
-		alignSelf: "flex-start",
-		wordBreak: "break-word",
-	},
-
-	inputForm: {
-		display: "flex",
-		padding: "16px",
-		borderTop: "1px solid #e5e7eb",
-		gap: "10px",
-	},
-
-	input: {
-		flex: 1,
-		padding: "10px",
-		borderRadius: "8px",
-		border: "1px solid #d1d5db",
-		outline: "none",
-		fontSize: "14px",
-	},
-
-	sendButton: {
-		background: "#3b82f6",
-		color: "white",
-		border: "none",
-		padding: "10px 16px",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontWeight: "bold",
-	},
-};
