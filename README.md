@@ -72,13 +72,6 @@ npm run dev
 
 Access the application at `http://localhost:5173`
 
-## Usage
-
-1. Enter a username to join the chat
-2. Send messages in the public chat room
-3. Click on usernames to start private conversations
-4. Use "Summarize Chat" button to generate AI summaries
-
 ## Configuration
 
 ### Environment Variables
