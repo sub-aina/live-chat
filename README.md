@@ -22,11 +22,6 @@
 
 ## Local Setup
 
-### Prerequisites
-- Node.js (v16+)
-- Python 3.8+
-- npm/yarn
-
 ### Installation
 
 1. **Clone repository**
