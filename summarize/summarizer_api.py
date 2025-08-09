@@ -3,13 +3,14 @@ from pydantic import BaseModel
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from fastapi.middleware.cors import CORSMiddleware
 import hashlib
+import os
 
 app = FastAPI()
 
-
+# Allow all origins in production (you can restrict this later)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  
+    allow_origins=["*"],  # Updated for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -110,3 +111,12 @@ async def summarize_chat(data: ChatRequest):
 @app.get("/")
 async def root():
     return {"message": "Chat Summarization API is running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
