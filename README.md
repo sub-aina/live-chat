@@ -96,9 +96,3 @@ Update WebSocket URL in `client/src/components/Home.jsx`:
 const WS_URL = `ws://127.0.0.1:8001`;
 ```
 
-## Deployment
-
-The frontend can be deployed to Vercel/Netlify. For production:
-- Deploy frontend as static site
-- Host WebSocket server on cloud platform
-- Consider memory requirements for AI service (2GB+ recommended)
