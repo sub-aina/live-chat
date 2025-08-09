@@ -70,7 +70,6 @@ cd client
 npm run dev
 ```
 
-Access the application at `http://localhost:5173`
 
 ## Configuration
 
