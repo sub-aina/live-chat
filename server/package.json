@@ -1,18 +1,18 @@
 {
-  "name": "server",
+  "name": "talky-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "WebSocket server for Talky chat app",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "node-fetch": "^3.3.2",
-    "uuid": "^11.1.0",
-    "ws": "^8.18.3"
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
