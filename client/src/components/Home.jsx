@@ -1,10 +1,10 @@
 import useWebSocket from "react-use-websocket";
 import React, { useEffect, useRef, useState } from "react";
+import { config } from "../config";
 import "./style.css";
 
 export function Home({ username }) {
-	const WS_URL = `ws://127.0.0.1:8001`;
-	const { sendJsonMessage, lastJsonMessage } = useWebSocket(WS_URL, {
+	const { sendJsonMessage, lastJsonMessage } = useWebSocket(config.WS_URL, {
 		share: true,
 		queryParams: { username },
 	});
@@ -36,7 +36,7 @@ export function Home({ username }) {
 	}, [chatMessages, privMessage]);
 
 	const handleSummarize = async () => {
-		console.log(" Summarize button clicked");
+		console.log("Summarize button clicked");
 		setIsLoadingSummary(true);
 
 		const messagesToSummarize = selectedUser
@@ -50,7 +50,7 @@ export function Home({ username }) {
 			: chatMessages.map((msg) => msg.text);
 
 		try {
-			const res = await fetch("http://127.0.0.1:8000/summarize", {
+			const res = await fetch(`${config.API_URL}/summarize`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -167,7 +167,7 @@ export function Home({ username }) {
 				<div className="messages-area">
 					<div className="chat-mode-header">
 						<div className="chat-mode-title">
-							{selectedUser ? ` Private Chat` : " Public Chat"}
+							{selectedUser ? `Private Chat` : "Public Chat"}
 						</div>
 						<div className="chat-mode-subtitle">
 							{selectedUser
@@ -194,15 +194,15 @@ export function Home({ username }) {
 						);
 					})}
 
-					{currentMessages.length > 0 && (
+					{/* {currentMessages.length > 0 && (
 						<button
 							onClick={handleSummarize}
 							className="summarize-button"
 							disabled={isLoadingSummary}
 						>
-							{isLoadingSummary ? <> Analyzing...</> : <> Summarize Chat</>}
+							{isLoadingSummary ? <>Analyzing...</> : <>Summarize Chat</>}
 						</button>
-					)}
+					)} */}
 
 					<div ref={chatEndRef} />
 				</div>
@@ -231,7 +231,7 @@ export function Home({ username }) {
 				>
 					<div className="summary-modal" onClick={(e) => e.stopPropagation()}>
 						<div className="summary-header">
-							<div className="summary-title"> Chat Summary</div>
+							<div className="summary-title">Chat Summary</div>
 							<button
 								className="summary-close"
 								onClick={() => setShowSummaryModal(false)}

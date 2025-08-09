@@ -7,22 +7,22 @@ import os
 
 app = FastAPI()
 
-# Allow all origins in production (you can restrict this later)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Updated for production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load summarization model & tokenizer
+
 model_name = "philschmid/bart-large-cnn-samsum"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 summarizer = pipeline("summarization", model=model, tokenizer=tokenizer)
 
-# Simple in-memory cache
+
 summary_cache = {}
 
 class ChatRequest(BaseModel):
@@ -97,7 +97,7 @@ async def summarize_chat(data: ChatRequest):
 
         summary_cache[text_hash] = summary
 
-        # Limit cache size
+       
         if len(summary_cache) > 100:
             oldest_key = next(iter(summary_cache))
             del summary_cache[oldest_key]
