@@ -7,19 +7,27 @@ const fetch = require("node-fetch");
 const server = http.createServer()
 const wsServer = new WebSocketServer({ server })
 
-const port = 8001
+const port = process.env.PORT || 8001
 const connections = {}
 const users = {}
 
-async function summarizeMessages(messagesArray) {
-    const res = await fetch("http://localhost:8000/summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesArray }),
-    });
+// Use environment variable for summarizer API URL
+const SUMMARIZER_API_URL = process.env.SUMMARIZER_API_URL || "https://talky-summarizer.onrender.com"
 
-    const data = await res.json();
-    return data.summary;
+async function summarizeMessages(messagesArray) {
+    try {
+        const res = await fetch(`${SUMMARIZER_API_URL}/summarize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: messagesArray }),
+        });
+
+        const data = await res.json();
+        return data.summary;
+    } catch (error) {
+        console.error("Summarization error:", error);
+        return "Failed to generate summary";
+    }
 }
 
 const chatLog = [];
@@ -34,7 +42,7 @@ const handleMessage = (bytes, uuid) => {
             text: message.text,
             timestamp: Date.now(),
         })
-        chatLog.push(chatMessage.text);
+        chatLog.push(message.text); // Fixed: was pushing chatMessage.text instead of message.text
         Object.values(connections).forEach((connection) => {
             connection.send(chatMessage);
         });
@@ -58,7 +66,6 @@ const handleMessage = (bytes, uuid) => {
             });
 
             connections[targetUser].send(privateMessage);
-            // connections[uuid].send(privateMessage);
 
             console.log(`Private message from ${fromUser} to ${toUser}: ${message.text}`);
         } else {
@@ -73,7 +80,6 @@ const handleMessage = (bytes, uuid) => {
                 text: summary,
                 timestamp: Date.now(),
             });
-
 
             connections[uuid].send(summaryMessage);
             console.log(summaryMessage);
@@ -97,12 +103,10 @@ const broadcast = () => {
         const message = {
             type: "users",
             users: users,
-
         };
         connection.send(JSON.stringify(message));
     });
 };
-
 
 wsServer.on("connection", (connection, request) => {
     const { username } = url.parse(request.url, true).query
@@ -111,7 +115,7 @@ wsServer.on("connection", (connection, request) => {
     connections[uuid] = connection
     users[uuid] = {
         username,
-        state: {},  //can be any state of client like online status , typing status
+        state: {},
     }
     broadcast();
 
